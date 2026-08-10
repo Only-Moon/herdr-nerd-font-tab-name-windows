@@ -462,6 +462,7 @@ class WindowsSpecificTest(unittest.TestCase):
         """Event-driven one-shot refresh works on Windows."""
         if platform.system() != "Windows":
             self.skipTest("Windows only")
+
         from nftn.daemon import oneshot_refresh
         connection = FakeConnection(
             tabs=[{"tab_id": "w1:t1", "number": 1, "label": "1", "pane_count": 1}],
@@ -471,7 +472,8 @@ class WindowsSpecificTest(unittest.TestCase):
         renamer, store = self.build(connection)
         def factory(conn):
             return Renamer(conn, config(), Resolver(config()), store)
-        result = oneshot_refresh(factory, log=lambda m: None)
+        # Pass fake connection as client to avoid real herdr connection
+        result = oneshot_refresh(factory, client=connection, log=lambda m: None)
         self.assertEqual(result, 0)
 
     @repeat_windows(5)

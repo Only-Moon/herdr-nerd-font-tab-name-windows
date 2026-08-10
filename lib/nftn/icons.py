@@ -16,8 +16,77 @@ class Resolver:
 
     def __init__(self, config):
         self.config = config
-        self.icons = config.section("icons")
-        self.agents = config.section("agents")
+        # Build normalized lookup maps for case-insensitive matching
+        self._icons = config.section("icons")
+        self._agents = config.section("agents")
+        # Build normalized lookup: lowercase key -> icon
+        self._icon_map = {k.lower(): v for k, v in self._icons.items()}
+        self._agent_map = {k.lower(): v for k, v in self._agents.items()}
+        # Folder name normalization: map common variations
+        self._folder_aliases = {
+            'download': 'downloads',
+            'document': 'documents',
+            'picture': 'pictures',
+            'video': 'videos',
+            'video': 'videos',
+            'music': 'music',
+            'audio': 'music',
+            'project': 'projects',
+            'code': 'projects',
+            'src': 'projects',
+            'source': 'projects',
+            'dev': 'projects',
+            'development': 'projects',
+            'config': '.config',
+            'configuration': '.config',
+            'settings': '.config',
+            'cache': '.cache',
+            'local': '.local',
+            'home': 'home',
+            'userprofile': 'home',
+            'user': 'home',
+            'desktop': 'desktop',
+            'download': 'downloads',
+            'downloads': 'downloads',
+            'document': 'documents',
+            'documents': 'documents',
+            'picture': 'pictures',
+            'pictures': 'pictures',
+            'image': 'pictures',
+            'images': 'pictures',
+            'video': 'videos',
+            'videos': 'videos',
+            'movie': 'videos',
+            'movies': 'videos',
+            'music': 'music',
+            'audio': 'music',
+            'song': 'music',
+            'songs': 'music',
+            'video': 'videos',
+            'videos': 'videos',
+            'movie': 'videos',
+            'movies': 'videos',
+            'doc': 'documents',
+            'docs': 'documents',
+            'pic': 'pictures',
+            'pics': 'pictures',
+            'img': 'pictures',
+            'imgs': 'pictures',
+            'vid': 'videos',
+            'vids': 'videos',
+            'pic': 'pictures',
+            'pics': 'pictures',
+        }
+
+    @property
+    def icons(self):
+        """Backward compatibility: return original icons dict."""
+        return self._icons
+
+    @property
+    def agents(self):
+        """Backward compatibility: return original agents dict."""
+        return self._agents
 
     # -- vocabulary -------------------------------------------------------
 
@@ -27,7 +96,7 @@ class Resolver:
         Used to recognise (and strip) an icon we previously wrote into a tab
         label, so a manual rename is never mistaken for one of our own.
         """
-        glyphs = set(self.icons.values()) | set(self.agents.values())
+        glyphs = set(self._icons.values()) | set(self._agents.values())
         for key in ("fallback-icon", "multi-pane-icon", "sem-version-icon", "agent-fallback-icon"):
             value = self.config.option(key)
             if value:
@@ -41,25 +110,113 @@ class Resolver:
         """Icon for a command name, or None."""
         if not name:
             return None
-        return self.icons.get(name) or self.icons.get(name.lower())
-
-    def by_cwd(self, cwd):
-        """Icon for a working directory folder name, or None."""
-        if not cwd:
-            return None
-        # Get the final folder name from the path
-        folder = os.path.basename(os.path.normpath(cwd))
-        if not folder:
-            return None
-        # Try exact match first, then lowercase
-        return self.icons.get(folder) or self.icons.get(folder.lower())
+        return self._icon_map.get(name.lower())
 
     def by_agent(self, agent):
         """Icon for a herdr-detected agent id, or None."""
         if not agent:
             return None
         key = agent.strip().lower()
-        return self.agents.get(key) or self.icons.get(key) or self.config.option("agent-fallback-icon") or None
+        return self._agent_map.get(key) or self._icon_map.get(key) or self.config.option("agent-fallback-icon")
+
+    def _normalize_folder(self, folder):
+        """Normalize folder name for lookup."""
+        if not folder:
+            return None
+        lower = folder.lower()
+        # Check aliases first
+        if lower in self._folder_aliases:
+            return self._folder_aliases[lower]
+        return lower
+
+    def by_cwd(self, cwd):
+        """Icon for a working directory, or None.
+
+        Checks the immediate folder name, then walks up the directory tree
+        to find project markers or known folder names.
+        """
+        if not cwd:
+            return None
+
+        cwd = os.path.normpath(cwd)
+
+        # 1. Check immediate folder name
+        folder = os.path.basename(cwd)
+        if folder:
+            norm = self._normalize_folder(folder)
+            if norm:
+                icon = self._icon_map.get(norm)
+                if icon:
+                    return icon
+
+        # 2. Walk up the directory tree looking for project markers
+        # or known folder names
+        current = cwd
+        while True:
+            parent = os.path.dirname(current)
+            if parent == current:  # reached root
+                break
+            current = parent
+
+            folder = os.path.basename(current)
+            if not folder:
+                continue
+
+            # Check for exact match
+            norm = self._normalize_folder(folder)
+            if norm:
+                icon = self._icon_map.get(norm)
+                if icon:
+                    return icon
+
+            # Check for project type markers
+            marker_icon = self._project_marker_icon(current)
+            if marker_icon:
+                return marker_icon
+
+        return None
+
+    def _project_marker_icon(self, path):
+        """Detect project type from marker files and return appropriate icon."""
+        markers = {
+            '.git': 'git',
+            'package.json': 'npm',
+            'Cargo.toml': 'rust',
+            'go.mod': 'go',
+            'pom.xml': 'maven',
+            'build.gradle': 'gradle',
+            'requirements.txt': 'python',
+            'pyproject.toml': 'python',
+            'setup.py': 'python',
+            'composer.json': 'php',
+            'Gemfile': 'ruby',
+            'mix.exs': 'elixir',
+            'rebar.config': 'erlang',
+            'Makefile': 'make',
+            'CMakeLists.txt': 'cmake',
+            'docker-compose.yml': 'docker',
+            'Dockerfile': 'docker',
+            'docker-compose.yaml': 'docker',
+            '.github': 'github',
+            '.gitlab': 'gitlab',
+            '.vscode': 'vscode',
+            '.idea': 'intellij',
+        }
+
+        for marker, icon_key in markers.items():
+            marker_path = os.path.join(path, marker)
+            if os.path.exists(marker_path):
+                icon = self._icon_map.get(icon_key.lower())
+                if icon:
+                    return icon
+        return None
+
+    def by_agent(self, agent):
+        """Icon for a herdr-detected agent id, or None."""
+        if not agent:
+            return None
+        key = agent.strip().lower()
+        return self._agent_map.get(key) or self._icon_map.get(key) or self.config.option("agent-fallback-icon") or None
 
     def command_name(self, process):
         """The name to look up for a foreground process entry."""

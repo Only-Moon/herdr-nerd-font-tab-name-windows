@@ -34,9 +34,14 @@ EVENTS = (
 DEBOUNCE_SECONDS = 0.15
 
 
+def _is_unix_platform() -> bool:
+    """True on Unix-like platforms where AF_UNIX sockets are available."""
+    return sys.platform != "win32"
+
+
 def _use_event_stream() -> bool:
     """True when event stream is available (Unix only)."""
-    return get_event_stream() is not None
+    return _is_unix_platform()
 
 
 def connect_events(path=None, attempts=10, delay=0.5, timeout=1.0):
@@ -145,13 +150,14 @@ class Watcher:
             self.log("unexpected error: {!r}".format(exc))
 
 
-def oneshot_refresh(renamer_factory, socket_path=None, log=None):
+def oneshot_refresh(renamer_factory, socket_path=None, client=None, log=None):
     """Single rename pass for event-driven mode (Windows).
 
     Called by herdr event hooks on Windows. No persistent process, no event stream.
     """
     log = log or (lambda *_: None)
-    client = Client(socket_path)
+    if client is None:
+        client = Client(socket_path)
     renamer = renamer_factory(client)
     try:
         for tab_id, label in renamer.refresh():

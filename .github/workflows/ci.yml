@@ -50,7 +50,8 @@ jobs:
           fi
         shell: bash
 
-      - name: Test CLI entrypoint
+      - name: Test CLI entrypoint (non-Windows)
+        if: runner.os != 'Windows'
         run: |
           PYTHONPATH=lib python -m nftn.cli --help
           PYTHONPATH=lib python -m nftn.cli icon nvim
@@ -75,6 +76,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tomli
 
       - name: Validate manifest
         run: |

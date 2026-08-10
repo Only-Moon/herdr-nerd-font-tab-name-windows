@@ -92,6 +92,7 @@ class Store:
         self.lock_path = os.path.join(root, "watcher-{}.lock".format(key))
         self.log_path = os.path.join(root, "watcher-{}.log".format(key))
         self.tabs = {}
+        self.pane_cwds = {}  # pane_id -> {"cwd": str, "updated": float}
         self._lock_handle = None
         self.load()
 
@@ -100,13 +101,15 @@ class Store:
             with open(self.path, encoding="utf-8") as handle:
                 data = json.load(handle)
             self.tabs = data.get("tabs", {}) if isinstance(data, dict) else {}
+            self.pane_cwds = data.get("pane_cwds", {})
         except (OSError, ValueError):
             self.tabs = {}
+            self.pane_cwds = {}
 
     def save(self):
         tmp = self.path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as handle:
-            json.dump({"tabs": self.tabs}, handle, ensure_ascii=False)
+            json.dump({"tabs": self.tabs, "pane_cwds": self.pane_cwds}, handle, ensure_ascii=False)
         os.replace(tmp, self.path)
 
     def get(self, tab_id):
@@ -117,6 +120,36 @@ class Store:
 
     def forget(self, tab_id):
         self.tabs.pop(tab_id, None)
+
+    def prune(self, live_tab_ids):
+        for tab_id in list(self.tabs):
+            if tab_id not in live_tab_ids:
+                del self.tabs[tab_id]
+
+    # -- pane cwd tracking -------------------------------------------------
+
+    def get_pane_cwd(self, pane_id):
+        """Get last known cwd for a pane."""
+        entry = self.pane_cwds.get(pane_id)
+        if entry:
+            return entry.get("cwd")
+        return None
+
+    def set_pane_cwd(self, pane_id, cwd):
+        """Update cwd for a pane with timestamp."""
+        import time
+        self.pane_cwds[pane_id] = {"cwd": cwd, "updated": time.time()}
+
+    def should_update_cwd(self, pane_id, new_cwd, cooldown_seconds=2):
+        """Check if cwd changed and cooldown expired."""
+        entry = self.pane_cwds.get(pane_id)
+        if not entry:
+            return True
+        if entry.get("cwd") != new_cwd:
+            import time
+            if time.time() - entry.get("updated", 0) >= cooldown_seconds:
+                return True
+        return False
 
     def prune(self, live_tab_ids):
         for tab_id in list(self.tabs):

@@ -42,7 +42,7 @@ def base_label(tab, remembered, vocabulary):
     return base
 
 
-def compose(icon, base, config, is_fallback=False, is_auto=False, pane_count=1):
+def compose(icon, base, config, is_fallback=False, is_auto=False, pane_count=1, duplicate_count=0):
     """Build the final tab label from an icon and the tab's base label."""
     multi = config.option("multi-pane-icon")
     if pane_count > 1 and multi:

@@ -106,6 +106,46 @@ class Renamer:
             pane = self.primary_pane(tab.get("tab_id"), panes, layouts)
             if pane is None:
                 continue
+
+            pane_id = pane.get("pane_id")
+            current_cwd = pane.get("foreground_cwd") or pane.get("cwd")
+            
+            # Check if cwd changed (with cooldown)
+            if pane_id and current_cwd:
+                if self.store.should_update_cwd(pane_id, current_cwd):
+                    # Update stored cwd
+                    self.store.set_pane_cwd(pane_id, current_cwd)
+                    
+                    # Recompute icon only, preserve base label
+                    remembered = self.store.get(tab.get("tab_id"))
+                    base = labels.base_label(tab, self.store.get(tab.get("tab_id")), self.vocabulary)
+                    icon, is_fallback = self.resolver.resolve(
+                        agent=pane.get("agent") or pane.get("display_agent"),
+                        processes=self.processes_for(pane),
+                        label=base,
+                        title=self.title_of(pane),
+                        cwd=current_cwd,
+                    )
+                    new_label = labels.compose(
+                        icon,
+                        base,
+                        self.config,
+                        is_fallback=is_fallback,
+                        is_auto=labels.is_auto_label(base, tab.get("number", "")),
+                        pane_count=tab.get("pane_count", 1),
+                    )
+                    
+                    if new_label != (tab.get("label") or ""):
+                        try:
+                            self.connection.rename_tab(tab["tab_id"], new_label)
+                        except HerdrError:
+                            pass
+                        else:
+                            self.store.remember(tab["tab_id"], base, new_label)
+                            applied.append((tab["tab_id"], new_label))
+                            continue
+
+            # Normal refresh for other cases
             computed = self.label_for(tab, pane)
             if computed is None:
                 continue
@@ -116,7 +156,6 @@ class Renamer:
             try:
                 self.connection.rename_tab(tab["tab_id"], label)
             except HerdrError:
-                # A tab can close between the snapshot and the rename.
                 continue
             self.store.remember(tab["tab_id"], base, label)
             applied.append((tab["tab_id"], label))

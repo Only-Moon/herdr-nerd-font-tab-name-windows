@@ -82,19 +82,46 @@ command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\
 id = "restart"
 title = "Nerd Font tabs: restart watcher"
 description = "Restart the background watcher (use after editing the config)"
+platforms = ["macos", "linux"]
 contexts = ["global"]
 command = ["bin/herdr-nerd-font-tab-name", "restart"]
+
+[[actions]]
+id = "restart-windows"
+title = "Nerd Font tabs: restart watcher"
+description = "Restart the background watcher (use after editing the config) (Windows)"
+platforms = ["windows"]
+contexts = ["global"]
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd restart"]
 
 [[actions]]
 id = "stop"
 title = "Nerd Font tabs: stop and restore labels"
 description = "Stop the watcher and put the original tab labels back"
+platforms = ["macos", "linux"]
 contexts = ["global"]
 command = ["bin/herdr-nerd-font-tab-name", "stop", "--restore"]
+
+[[actions]]
+id = "stop-windows"
+title = "Nerd Font tabs: stop and restore labels"
+description = "Stop the watcher and put the original tab labels back (Windows)"
+platforms = ["windows"]
+contexts = ["global"]
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd stop --restore"]
 
 [[actions]]
 id = "status"
 title = "Nerd Font tabs: status"
 description = "Show whether the watcher is running"
+platforms = ["macos", "linux"]
 contexts = ["global"]
 command = ["bin/herdr-nerd-font-tab-name", "status"]
+
+[[actions]]
+id = "status-windows"
+title = "Nerd Font tabs: status"
+description = "Show whether the watcher is running (Windows)"
+platforms = ["windows"]
+contexts = ["global"]
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd status"]
