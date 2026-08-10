@@ -1,0 +1,12 @@
+#!/bin/sh
+# herdr startup hook: bring up the watcher and exit.
+#
+# Startup hooks are one-shot, not supervised, so `start` spawns the watcher in
+# its own session and returns immediately. Also used by the tab.created event
+# hook, where it doubles as a liveness check — `start` is a no-op when a
+# watcher for this session is already running.
+
+set -e
+
+root="${HERDR_PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+exec "$root/bin/herdr-nerd-font-tab-name" start "$@"

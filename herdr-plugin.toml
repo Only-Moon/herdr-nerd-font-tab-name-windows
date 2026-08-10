@@ -1,0 +1,100 @@
+id = "herdr-nerd-font-tab-name"
+name = "Nerd Font Tab Name"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Replaces herdr tab numbers and names with a Nerd Font icon for whatever is running in the tab"
+platforms = ["macos", "linux", "windows"]
+
+# Unix: spawns the long-running watcher daemon
+[[startup]]
+platforms = ["macos", "linux"]
+command = ["bin/startup"]
+
+# Windows: event-driven one-shot via herdr event hooks (no persistent daemon)
+[[startup]]
+platforms = ["windows"]
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "bin/startup.ps1"]
+
+# Unix: safety net - restart watcher on new tab
+[[events]]
+platforms = ["macos", "linux"]
+on = "tab.created"
+command = ["bin/startup"]
+
+# Windows: run a single rename pass on relevant events
+[[events]]
+platforms = ["windows"]
+on = "tab.created"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "tab.renamed"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "tab.focused"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "pane.created"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "pane.focused"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "pane.agent_detected"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "pane.agent_status_changed"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[events]]
+platforms = ["windows"]
+on = "pane.exited"
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[actions]]
+id = "refresh"
+title = "Nerd Font tabs: refresh now"
+description = "Apply icons to every tab immediately"
+platforms = ["macos", "linux"]
+contexts = ["global", "workspace", "tab"]
+command = ["bin/herdr-nerd-font-tab-name", "once"]
+
+[[actions]]
+id = "refresh-windows"
+title = "Nerd Font tabs: refresh now"
+description = "Apply icons to every tab immediately (Windows)"
+platforms = ["windows"]
+contexts = ["global", "workspace", "tab"]
+command = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "& .\\bin\\herdr-nerd-font-tab-name.cmd refresh"]
+
+[[actions]]
+id = "restart"
+title = "Nerd Font tabs: restart watcher"
+description = "Restart the background watcher (use after editing the config)"
+contexts = ["global"]
+command = ["bin/herdr-nerd-font-tab-name", "restart"]
+
+[[actions]]
+id = "stop"
+title = "Nerd Font tabs: stop and restore labels"
+description = "Stop the watcher and put the original tab labels back"
+contexts = ["global"]
+command = ["bin/herdr-nerd-font-tab-name", "stop", "--restore"]
+
+[[actions]]
+id = "status"
+title = "Nerd Font tabs: status"
+description = "Show whether the watcher is running"
+contexts = ["global"]
+command = ["bin/herdr-nerd-font-tab-name", "status"]
